@@ -1,5 +1,9 @@
 # sonatype/nexus3
 
+### The actual docker image exists in DTR.  Please be sure you are pulling from there, this
+### Dockerfile only exists here for versioning control, etc.  Changes to the Docker image will
+### be pushed accordingly, and recorded here.
+
 A Dockerfile for Sonatype Nexus Repository Manager 3, based on CentOS.
 
 To run, binding the exposed port 8081 to the host.
