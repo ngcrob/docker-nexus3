@@ -9,6 +9,9 @@ ENV JAVA_HOME /opt/java
 ENV JAVA_VERSION_MAJOR 8
 ENV JAVA_VERSION_MINOR 91
 ENV JAVA_VERSION_BUILD 14
+ENV JAVA_MAX_MEM 2048m
+ENV JAVA_MIN_MEM 1200m
+ENV EXTRA_JAVA_OPTS ""
 
 RUN yum install -y \
   curl tar \
@@ -43,6 +46,8 @@ ADD content/ /
 
 ## configure nexus runtime env
 RUN sed \
+		-e "s|-Xms1200M|-Xms${JAVA_MIN_MEM}|g" \
+		-e "s|-Xmx1200M|-Xmx${JAVA_MAX_MEM}|g" \
     -e "s|karaf.home=.|karaf.home=/opt/sonatype/nexus|g" \
     -e "s|karaf.base=.|karaf.base=/opt/sonatype/nexus|g" \
     -e "s|karaf.etc=etc|karaf.etc=/opt/sonatype/nexus/etc|g" \
@@ -62,9 +67,5 @@ VOLUME ${NEXUS_DATA}
 EXPOSE 8081 8443
 USER nexus
 WORKDIR /opt/sonatype/nexus
-
-ENV JAVA_MAX_MEM 1200m
-ENV JAVA_MIN_MEM 1200m
-ENV EXTRA_JAVA_OPTS ""
 
 CMD bin/nexus run
