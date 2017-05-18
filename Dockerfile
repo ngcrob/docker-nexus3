@@ -9,6 +9,9 @@ ENV JAVA_HOME /opt/java
 ENV JAVA_VERSION_MAJOR 8
 ENV JAVA_VERSION_MINOR 91
 ENV JAVA_VERSION_BUILD 14
+ENV JAVA_MAX_MEM 2048m
+ENV JAVA_MIN_MEM 1200m
+ENV EXTRA_JAVA_OPTS ""
 
 RUN yum install -y \
   curl tar \
@@ -29,7 +32,7 @@ RUN mkdir -p /opt/sonatype/nexus \
     https://download.sonatype.com/nexus/3/nexus-${NEXUS_VERSION}-unix.tar.gz \
   | gunzip \
   | tar x -C /opt/sonatype/nexus --strip-components=1 nexus-${NEXUS_VERSION} \
-  && chown -R root:root /opt/sonatype/nexus 
+  && chown -R root:root /opt/sonatype/nexus
 
 # Patch nexus
 # https://support.sonatype.com/hc/en-us/articles/218729178-Nexus-Repository-Manager-3-0-0-03-Docker-Rollup-Patch
@@ -37,8 +40,14 @@ RUN curl --fail --silent --retry 3 \
     https://support.sonatype.com/hc/en-us/article_attachments/208186848/nexus-repository-docker-3.0.0-03-patch2.jar \
     -o /opt/sonatype/nexus/system/com/sonatype/nexus/plugins/nexus-repository-docker/3.0.0-03/nexus-repository-docker-3.0.0-03.jar
 
+### Copy stuff in that we need.
+RUN mkdir -p /opt/sonatype/nexus/etc/ssl
+ADD content/ /
+
 ## configure nexus runtime env
 RUN sed \
+		-e "s|-Xms1200M|-Xms${JAVA_MIN_MEM}|g" \
+		-e "s|-Xmx1200M|-Xmx${JAVA_MAX_MEM}|g" \
     -e "s|karaf.home=.|karaf.home=/opt/sonatype/nexus|g" \
     -e "s|karaf.base=.|karaf.base=/opt/sonatype/nexus|g" \
     -e "s|karaf.etc=etc|karaf.etc=/opt/sonatype/nexus/etc|g" \
@@ -47,16 +56,16 @@ RUN sed \
     -e "s|java.io.tmpdir=data/tmp|java.io.tmpdir=${NEXUS_DATA}/tmp|g" \
     -i /opt/sonatype/nexus/bin/nexus.vmoptions
 
+### Update the properties file to run HTTPS
+RUN sed \
+    -i '/application-port.*/a application-port-ssl=8443' /opt/sonatype/nexus/etc/org.sonatype.nexus.cfg
+
 RUN useradd -r -u 200 -m -c "nexus role account" -d ${NEXUS_DATA} -s /bin/false nexus
 
 VOLUME ${NEXUS_DATA}
 
-EXPOSE 8081
+EXPOSE 8081 8443
 USER nexus
 WORKDIR /opt/sonatype/nexus
-
-ENV JAVA_MAX_MEM 1200m
-ENV JAVA_MIN_MEM 1200m
-ENV EXTRA_JAVA_OPTS ""
 
 CMD bin/nexus run
